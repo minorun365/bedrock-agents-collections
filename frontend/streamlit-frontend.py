@@ -10,7 +10,7 @@ from botocore.eventstream import EventStreamError
 def initialize_session():
     """セッションの初期設定を行う"""
     if "client" not in st.session_state:
-        st.session_state.client = boto3.client("bedrock-agent-runtime", region_name="us-east-1")
+        st.session_state.client = boto3.client("bedrock-agent-runtime")
     
     if "session_id" not in st.session_state:
         st.session_state.session_id = str(uuid.uuid4())
