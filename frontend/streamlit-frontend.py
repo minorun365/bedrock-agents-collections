@@ -21,6 +21,12 @@ def initialize_session():
     if "last_prompt" not in st.session_state:
         st.session_state.last_prompt = None
     
+    if "agent_id" not in st.session_state:
+        st.session_state.agent_id = ""
+    
+    if "agent_alias_id" not in st.session_state:
+        st.session_state.agent_alias_id = ""
+    
     return st.session_state.client, st.session_state.session_id, st.session_state.messages
 
 def display_chat_history(messages):
@@ -96,12 +102,11 @@ def handle_trace_event(event):
             with st.expander(f"🤖 サブエージェント「{agent_name}」から回答を取得しました", expanded=True):
                 st.write(trace["observation"]["agentCollaboratorInvocationOutput"]["output"]["text"])
 
-def invoke_bedrock_agent(client, session_id, prompt):
+def invoke_bedrock_agent(client, session_id, prompt, agent_id, agent_alias_id):
     """Bedrockエージェントを呼び出す"""
-    load_dotenv()
     return client.invoke_agent(
-        agentId=os.getenv("AGENT_ID"),
-        agentAliasId=os.getenv("AGENT_ALIAS_ID"),
+        agentId=agent_id,
+        agentAliasId=agent_alias_id,
         sessionId=session_id,
         enableTrace=True,
         inputText=prompt,
@@ -130,24 +135,34 @@ def show_error_popup(exeption):
 def main():
     """メインのアプリケーション処理"""
     client, session_id, messages = initialize_session()
+    
+    # サイドバーにエージェント設定を配置
+    with st.sidebar:
+        st.session_state.agent_id = st.text_input("エージェントのID", value=st.session_state.agent_id)
+        st.session_state.agent_alias_id = st.text_input("エージェントのエイリアスID", value=st.session_state.agent_alias_id)
+    
     display_chat_history(messages)
     
-    if prompt := st.chat_input("質問してね"):
-        messages.append({"role": "human", "text": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-        
-        try:
-            response = invoke_bedrock_agent(client, session_id, prompt)
-            handle_agent_response(response, messages)
+    # エージェントIDとエイリアスIDが設定されている場合のみチャット入力を表示
+    if st.session_state.agent_id and st.session_state.agent_alias_id:
+        if prompt := st.chat_input("質問してね"):
+            messages.append({"role": "human", "text": prompt})
+            with st.chat_message("user"):
+                st.markdown(prompt)
             
-        except (EventStreamError, ClientError) as e:
-            if "dependencyFailedException" in str(e):
-                show_error_popup("dependencyFailedException")
-            elif "throttlingException" in str(e):
-                show_error_popup("throttlingException")
-            else:
-                raise e
+            try:
+                response = invoke_bedrock_agent(client, session_id, prompt, st.session_state.agent_id, st.session_state.agent_alias_id)
+                handle_agent_response(response, messages)
+                
+            except (EventStreamError, ClientError) as e:
+                if "dependencyFailedException" in str(e):
+                    show_error_popup("dependencyFailedException")
+                elif "throttlingException" in str(e):
+                    show_error_popup("throttlingException")
+                else:
+                    raise e
+    else:
+        st.info("最初にサイドバーでエージェントIDとエイリアスIDを設定してください")
 
 if __name__ == "__main__":
     main()
