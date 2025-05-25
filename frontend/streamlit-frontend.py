@@ -25,8 +25,8 @@ def initialize_session():
 
 def display_chat_history(messages):
     """チャット履歴を表示する"""
-    st.title("わが家のAI技術顧問")
-    st.text("画面下部のチャットボックスから何でも質問してね！")
+    st.title("タイトル")
+    st.text("説明文")
     
     for message in messages:
         with st.chat_message(message['role']):
@@ -132,7 +132,7 @@ def main():
     client, session_id, messages = initialize_session()
     display_chat_history(messages)
     
-    if prompt := st.chat_input("例：画像入り資料を使ったRAGアプリを作るにはどうすればいい？"):
+    if prompt := st.chat_input("質問してね"):
         messages.append({"role": "human", "text": prompt})
         with st.chat_message("user"):
             st.markdown(prompt)
